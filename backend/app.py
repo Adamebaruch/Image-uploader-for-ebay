@@ -1,88 +1,122 @@
 from flask import Flask, request, jsonify
+from flask_cors import CORS
 import os
 from werkzeug.utils import secure_filename
-import requests
+import logging
+import uuid
 from PIL import Image
 import io
 
-try:
-    import cv2
-    import numpy as np
-    CV2_AVAILABLE = True
-except ModuleNotFoundError:
-    CV2_AVAILABLE = False
+# Import utility modules
+from utils.image_processor import analyze_image
+from utils.ebay_connector import identify_product, get_product_details
+
+# Set up logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 app = Flask(__name__)
+CORS(app)  # Enable CORS for all routes
+
+# Configuration
 app.config['UPLOAD_FOLDER'] = 'uploads'
+app.config['ALLOWED_EXTENSIONS'] = {'png', 'jpg', 'jpeg', 'gif'}
+app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB max upload
 os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 
-# Homepage Route (Prevents 404 Error)
+# Helper function to check allowed file extensions
+def allowed_file(filename):
+    return '.' in filename and \
+           filename.rsplit('.', 1)[1].lower() in app.config['ALLOWED_EXTENSIONS']
+
 @app.route('/')
 def home():
     return '''
-    <h1>Ebay AI Photo Lister</h1>
-    <p>Welcome! Use the <code>/upload</code> endpoint to upload an image.</p>
-    <p>Try sending an image via Postman or cURL.</p>
+    <h1>eBay AI Photo Lister API</h1>
+    <p>Upload an image to <code>/api/analyze</code> to get eBay listing suggestions.</p>
+    <p>For more information, see the documentation.</p>
     '''
 
-# Function to detect if the image contains a game cartridge or disc
-def detect_disc_or_cartridge(image_path):
-    if not CV2_AVAILABLE:
-        return "Disc detection unavailable (cv2 not installed)"
-    
-    image = cv2.imread(image_path)
-    gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-    edges = cv2.Canny(gray, 50, 150)
-    circles = cv2.HoughCircles(gray, cv2.HOUGH_GRADIENT, 1.2, 100)
-    if circles is not None:
-        return "Disc detected"
-    else:
-        return "No disc detected"
-
-# Function to recognize the product using alternative OCR (Tesseract not available)
-def recognize_product(image_path):
-    try:
-        image = Image.open(image_path)
-        text = image.filename  # Fallback: Use file name if OCR is unavailable
-        return text.strip() if text else "Unknown Product"
-    except Exception as e:
-        return f"OCR failed: {str(e)}"
-
-# Function to fetch eBay sold listings (Mocked without API for now)
-def fetch_ebay_solds(product_name):
-    # Mocked response for now (can integrate eBay scraping later)
-    sold_listings = {
-        "Pokemon Gold": {"title": "Pokemon Gold Game Boy - Complete in Box", "price": "$120", "category": "Video Games"},
-        "Super Mario 64": {"title": "Super Mario 64 - Cartridge Only", "price": "$40", "category": "Nintendo 64"},
-    }
-    return sold_listings.get(product_name, {"title": product_name, "price": "Unknown", "category": "Unknown"})
-
-@app.route('/upload', methods=['POST'])
-def upload_image():
+@app.route('/api/analyze', methods=['POST'])
+def analyze_uploaded_image():
     if 'file' not in request.files:
         return jsonify({"error": "No file uploaded"}), 400
 
     file = request.files['file']
-    filename = secure_filename(file.filename)
-    file_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
-    file.save(file_path)
+    
+    if file.filename == '':
+        return jsonify({"error": "No file selected"}), 400
+        
+    if not allowed_file(file.filename):
+        return jsonify({
+            "error": "File type not allowed", 
+            "allowed_types": list(app.config['ALLOWED_EXTENSIONS'])
+        }), 400
 
-    # Recognize product
-    product_name = recognize_product(file_path)
+    # Create unique filename
+    filename = str(uuid.uuid4()) + '_' + secure_filename(file.filename)
+    file_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
     
-    # Detect if a disc or cartridge is present
-    disc_status = detect_disc_or_cartridge(file_path)
-    
-    # Fetch eBay sold listings
-    ebay_data = fetch_ebay_solds(product_name)
-    
-    return jsonify({
-        "title": ebay_data['title'],
-        "price": ebay_data['price'],
-        "category": ebay_data['category'],
-        "description": f"This is a {ebay_data['title']} in great condition!",
-        "disc_status": disc_status
-    })
+    try:
+        file.save(file_path)
+        logger.info(f"Saved uploaded file to {file_path}")
+        
+        # Analyze image
+        image_analysis = analyze_image(file_path)
+        item_type = image_analysis["item_type"]
+        
+        # Try to identify product from filename
+        product_id = identify_product(file.filename)
+        
+        # No product identified
+        if not product_id:
+            return jsonify({
+                "success": False,
+                "message": "Could not identify product in image",
+                "analysis": {
+                    "item_type": item_type,
+                    "confidence": image_analysis["confidence"]
+                }
+            }), 200
+        
+        # Get product details
+        product_details = get_product_details(product_id, item_type)
+        
+        if not product_details:
+            return jsonify({
+                "success": False,
+                "message": "Product identified but details not found",
+                "product_id": product_id
+            }), 200
+            
+        # Get default pricing (first option)
+        price = product_details["pricing"][0]["price"] if product_details["pricing"] else 0
+        
+        # Prepare response
+        response = {
+            "success": True,
+            "product_id": product_id,
+            "title": product_details["title"],
+            "category": product_details["category"],
+            "description": product_details["description"],
+            "item_type": item_type,
+            "confidence": image_analysis["confidence"],
+            "pricing_options": product_details["pricing"],
+            "ebay_listing": {
+                "title": f"{product_details['title']} - {item_type.title()}",
+                "category": product_details["category"],
+                "price": price,
+                "description": product_details["description"],
+                "condition": "Used" 
+            }
+        }
+        
+        return jsonify(response), 200
+        
+    except Exception as e:
+        logger.error(f"Error processing upload: {str(e)}")
+        return jsonify({"error": f"Server error: {str(e)}"}), 500
 
 if __name__ == '__main__':
-    app.run(debug=True, use_reloader=False)
+    logger.info("Starting eBay AI Photo Lister server")
+    app.run(debug=True, host='0.0.0.0', port=5000)
