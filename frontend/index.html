@@ -3,39 +3,178 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>My Web Application</title>
+    <title>eBay AI Photo Lister</title>
     <link rel="stylesheet" href="css/styles.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
 </head>
 <body>
     <header>
-        <h1>Welcome to My Web Application</h1>
-        <nav>
-            <ul>
-                <li><a href="index.html">Home</a></li>
-                <li><a href="about.html">About</a></li>
-                <li><a href="contact.html">Contact</a></li>
-            </ul>
-        </nav>
+        <div class="container">
+            <div class="logo">
+                <i class="fas fa-camera"></i>
+                <h1>eBay AI Photo Lister</h1>
+            </div>
+            <nav>
+                <ul>
+                    <li><a href="index.html" class="active">Home</a></li>
+                    <li><a href="about.html">About</a></li>
+                    <li><a href="#">Settings</a></li>
+                </ul>
+            </nav>
+        </div>
     </header>
 
     <main>
-        <section>
-            <h2>Main Content Section</h2>
-            <p>This is the main content of your web application. You can modify this as needed.</p>
+        <section class="hero">
+            <div class="container">
+                <h2>Enhance Your Product Photos with AI</h2>
+                <p>Upload, enhance, and list your products on eBay with just a few clicks</p>
+            </div>
         </section>
 
-        <section>
-            <h2>Features</h2>
-            <ul>
-                <li>Feature 1</li>
-                <li>Feature 2</li>
-                <li>Feature 3</li>
-            </ul>
+        <section class="upload-section">
+            <div class="container">
+                <h2>Upload Photos</h2>
+                <div class="upload-area" id="dropZone">
+                    <i class="fas fa-cloud-upload-alt"></i>
+                    <p>Drag & drop images here or click to browse</p>
+                    <input type="file" id="fileInput" multiple accept="image/*" style="display: none;">
+                    <button class="browse-btn">Browse Files</button>
+                </div>
+                <div class="uploaded-images" id="imagePreview">
+                    <!-- Image previews will appear here -->
+                </div>
+            </div>
+        </section>
+
+        <section class="ai-options">
+            <div class="container">
+                <h2>AI Enhancement Options</h2>
+                <div class="options-grid">
+                    <div class="option-card">
+                        <div class="option-toggle">
+                            <input type="checkbox" id="removeBackground" checked>
+                            <label for="removeBackground"></label>
+                        </div>
+                        <h3>Remove Background</h3>
+                        <p>Generate clean, white backgrounds for professional product photos</p>
+                    </div>
+                    <div class="option-card">
+                        <div class="option-toggle">
+                            <input type="checkbox" id="enhanceColors" checked>
+                            <label for="enhanceColors"></label>
+                        </div>
+                        <h3>Enhance Colors</h3>
+                        <p>Automatically adjust brightness, contrast, and saturation</p>
+                    </div>
+                    <div class="option-card">
+                        <div class="option-toggle">
+                            <input type="checkbox" id="removeShadows">
+                            <label for="removeShadows"></label>
+                        </div>
+                        <h3>Remove Shadows</h3>
+                        <p>Eliminate unwanted shadows for a cleaner look</p>
+                    </div>
+                    <div class="option-card">
+                        <div class="option-toggle">
+                            <input type="checkbox" id="removeDefects">
+                            <label for="removeDefects"></label>
+                        </div>
+                        <h3>Fix Defects</h3>
+                        <p>Remove dust, scratches, and minor imperfections</p>
+                    </div>
+                </div>
+                <button class="process-btn" id="processImages">Process Images</button>
+            </div>
+        </section>
+
+        <section class="listing-form">
+            <div class="container">
+                <h2>eBay Listing Details</h2>
+                <form id="ebayForm">
+                    <div class="form-group">
+                        <label for="title">Listing Title</label>
+                        <input type="text" id="title" name="title" placeholder="e.g., Brand New iPhone 13 Pro 128GB Graphite Unlocked">
+                    </div>
+                    
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="price">Price ($)</label>
+                            <input type="number" id="price" name="price" placeholder="0.00" step="0.01">
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="category">Category</label>
+                            <select id="category" name="category">
+                                <option value="">Select Category</option>
+                                <option value="electronics">Electronics</option>
+                                <option value="clothing">Clothing</option>
+                                <option value="home">Home & Garden</option>
+                                <option value="toys">Toys & Hobbies</option>
+                                <option value="other">Other</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="description">Description</label>
+                        <textarea id="description" name="description" placeholder="Describe your item in detail..." rows="5"></textarea>
+                    </div>
+                    
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="condition">Condition</label>
+                            <select id="condition" name="condition">
+                                <option value="new">New</option>
+                                <option value="like-new">Like New</option>
+                                <option value="used">Used</option>
+                                <option value="for-parts">For Parts</option>
+                            </select>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="shipping">Shipping Option</label>
+                            <select id="shipping" name="shipping">
+                                <option value="standard">Standard Shipping</option>
+                                <option value="expedited">Expedited</option>
+                                <option value="free">Free Shipping</option>
+                                <option value="pickup">Local Pickup</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <button type="submit" class="submit-btn">Create eBay Listing</button>
+                </form>
+            </div>
         </section>
     </main>
 
     <footer>
-        <p>&copy; 2025 My Web Application. All rights reserved.</p>
+        <div class="container">
+            <div class="footer-content">
+                <div class="footer-logo">
+                    <i class="fas fa-camera"></i>
+                    <h2>eBay AI Photo Lister</h2>
+                </div>
+                <div class="footer-links">
+                    <h3>Quick Links</h3>
+                    <ul>
+                        <li><a href="index.html">Home</a></li>
+                        <li><a href="about.html">About</a></li>
+                        <li><a href="#">Privacy Policy</a></li>
+                        <li><a href="#">Terms of Service</a></li>
+                    </ul>
+                </div>
+                <div class="footer-contact">
+                    <h3>Contact Us</h3>
+                    <p><i class="fas fa-envelope"></i> support@ebayailister.com</p>
+                    <p><i class="fas fa-phone"></i> (123) 456-7890</p>
+                </div>
+            </div>
+            <div class="footer-bottom">
+                <p>&copy; 2025 eBay AI Photo Lister. All rights reserved.</p>
+            </div>
+        </div>
     </footer>
 
     <script src="js/main.js"></script>
